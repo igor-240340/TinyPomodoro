@@ -26,27 +26,6 @@ std::string get_current_date_string() {
     return oss.str();
 }
 
-std::optional<std::pair<std::string, double>> read_last_entry(const std::string& filename) {
-    std::ifstream file(filename);
-    std::string last_line, line;
-
-    while (std::getline(file, line)) {
-        last_line = line;
-    }
-
-    if (!last_line.empty()) {
-        std::istringstream iss(last_line);
-
-        std::string date;
-        double hours_elapsed;
-        if (iss >> date >> hours_elapsed) {
-            return std::make_pair(date, hours_elapsed);
-        }
-    }
-
-    return std::nullopt;
-}
-
 void log_time(const std::string& foldername, int minutes_elapsed) {
     const std::string current_date_string = get_current_date_string();
     const std::string filename = foldername + "/" + current_date_string + ".txt";
