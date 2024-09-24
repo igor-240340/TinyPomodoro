@@ -6,44 +6,17 @@
 #include <sstream>
 #include <string>
 #include <filesystem>
-#include <optional>
 
 #include "bass.h"
 
 constexpr int default_time_minutes = 25;
 
-std::string get_current_date_string() {
-    const auto now = std::chrono::system_clock::now();
-    const auto now_time_t = std::chrono::system_clock::to_time_t(now);
-
-    std::tm local_time;
-    localtime_s(&local_time, &now_time_t);
-
-    std::ostringstream oss;
-    oss << local_time.tm_mday << '-'
-        << (local_time.tm_mon + 1) << '-'
-        << (local_time.tm_year + 1900);
-    return oss.str();
-}
-
-void log_time(const std::string& foldername, int minutes_elapsed) {
-    const std::string current_date_string = get_current_date_string();
-    const std::string filename = foldername + "/" + current_date_string + ".txt";
-    const double hours_elapsed = minutes_elapsed / 60.0;
-
-    double prev_hours_elapsed = 0.0;
-    if (std::filesystem::exists(filename)) {
-        std::ifstream file(filename);
-        file >> prev_hours_elapsed;
-    }
-
-    std::ofstream file(filename, std::ios::trunc);
-    file << (prev_hours_elapsed + hours_elapsed) << " hour(s).\n";
-}
+void log_time(const std::string& foldername, int minutes_elapsed);
+std::string get_current_date_string();
 
 int main(int argc, char* argv[]) {
     if (!BASS_Init(-1, 44100, 0, 0, NULL)) {
-        std::cerr << "BASS: Can't initialize device." << std::endl;
+        std::cerr << "BASS: Can't initialize device.\n";
         return 1;
     }
 
@@ -55,16 +28,11 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // TinyPomodoro.exe -m <minutes> or 
-    // TinyPomodoro.exe -m <minutes> -nolog.
-    const bool minutes_passed_1 = (argc > 2 && std::string(argv[1]) == "-m");
-    // TinyPomodoro.exe -nolog -m <minutes>
-    const bool minutes_passed_2 = (argc == 4 && std::string(argv[2]) == "-m");
-    int minutes_index = -1;
-    if (minutes_passed_1)
-        minutes_index = 2;
-    else if (minutes_passed_2)
-        minutes_index = 3;
+    // "TinyPomodoro.exe -m <minutes>" or
+    // "TinyPomodoro.exe -m <minutes> -nolog".
+    int minutes_index = (argc > 2 && std::string(argv[1]) == "-m") ? 2 : -1;
+    // "TinyPomodoro.exe -nolog -m <minutes>".
+    minutes_index = (argc == 4 && std::string(argv[2]) == "-m") ? 3 : minutes_index;
 
     int minutes = default_time_minutes;
     if (minutes_index > 0) {
@@ -78,12 +46,14 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Timer started for " << minutes << " minute(s)...\n";
     std::this_thread::sleep_for(std::chrono::minutes(minutes));
-    //std::this_thread::sleep_for(std::chrono::seconds(2));
     std::cout << "Time is up!" << std::endl;
 
-    const bool nolog_passed_1 = (argc > 1 && std::string(argv[1]) == "-nolog");     // TinyPomodoro.exe -nolog or TinyPomodoro.exe -nolog -m <minutes>.
-    const bool nolog_passed_2 = (argc == 4 && std::string(argv[3]) == "-nolog");    // TinyPomodoro.exe -m <minutes> -nolog.
-    if (!(nolog_passed_1 || nolog_passed_2)) {
+    // "TinyPomodoro.exe -nolog" or
+    // "TinyPomodoro.exe -nolog -m <minutes>".
+    bool nolog_passed = (argc > 1 && std::string(argv[1]) == "-nolog") ? true : false;
+    // "TinyPomodoro.exe -m <minutes> -nolog".
+    nolog_passed = (argc == 4 && std::string(argv[3]) == "-nolog") ? true : nolog_passed;
+    if (!nolog_passed) {
         if (!std::filesystem::exists("log")) {
             std::filesystem::create_directory("log");
         }
@@ -104,4 +74,33 @@ int main(int argc, char* argv[]) {
     BASS_Free();
 
     return 0;
+}
+
+void log_time(const std::string& foldername, int minutes_elapsed) {
+    const auto current_date_string = get_current_date_string();
+    const auto filename = foldername + "/" + current_date_string + ".txt";
+    const double hours_elapsed = minutes_elapsed / 60.0;
+
+    double prev_hours_elapsed = 0.0;
+    if (std::filesystem::exists(filename)) {
+        std::ifstream file(filename);
+        file >> prev_hours_elapsed;
+    }
+
+    std::ofstream file(filename, std::ios::trunc);
+    file << (prev_hours_elapsed + hours_elapsed) << " hour(s).\n";
+}
+
+std::string get_current_date_string() {
+    const auto now = std::chrono::system_clock::now();
+    const auto now_time_t = std::chrono::system_clock::to_time_t(now);
+
+    std::tm local_time;
+    localtime_s(&local_time, &now_time_t);
+
+    std::ostringstream oss;
+    oss << local_time.tm_mday << '-'
+        << (local_time.tm_mon + 1) << '-'
+        << (local_time.tm_year + 1900);
+    return oss.str();
 }
