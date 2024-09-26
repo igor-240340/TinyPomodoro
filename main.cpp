@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <filesystem>
+#include <conio.h>
 
 #include "bass.h"
 
@@ -13,6 +14,7 @@ constexpr int default_time_minutes = 25;
 
 void log_time(const std::string& foldername, int minutes_elapsed);
 std::string get_current_date_string();
+void free_bass(HSTREAM stream);
 
 int main(int argc, char* argv[]) {
     if (!BASS_Init(-1, 44100, 0, 0, NULL)) {
@@ -45,9 +47,41 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Timer started for " << minutes << " minute(s)...\n";
-    std::this_thread::sleep_for(std::chrono::minutes(minutes));
-    std::cout << "Time is up!" << std::endl;
+    std::cout << "Press 'p' to pause the timer.\n";
+    std::cout << "Press 'e' to exit (elapsed time won't be counted).\n";
+    auto start = std::chrono::steady_clock::now();
+    auto end = start + std::chrono::minutes(minutes);
+    while (std::chrono::steady_clock::now() < end) {
+        auto now = std::chrono::steady_clock::now();
+        auto remaining = std::chrono::duration_cast<std::chrono::seconds>(end - now);
 
+        int minutes_left = remaining.count() / 60;
+        int seconds_left = remaining.count() % 60;
+
+        std::cout << "\rRemaining time: ";
+        std::cout
+            << std::setw(2) << std::setfill('0') << minutes_left
+            << ":" << std::setw(2) << std::setfill('0') << seconds_left
+            << std::flush;
+
+        if (_kbhit()) {
+            char ch = _getch();
+            if (ch == 'p') {
+                std::cout << " | Timer paused. Press any key to resume...";
+                _getch();
+                std::cout << "\r" << "\033[K" << std::flush;
+                continue;
+            }
+            else if (ch == 'e') {
+                BASS_StreamFree(stream);
+                BASS_Free();
+                return 0;
+            }
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    
     // "TinyPomodoro.exe -nolog" or
     // "TinyPomodoro.exe -nolog -m <minutes>".
     bool nolog_passed = (argc > 1 && std::string(argv[1]) == "-nolog") ? true : false;
@@ -103,4 +137,9 @@ std::string get_current_date_string() {
         << (local_time.tm_mon + 1) << '-'
         << (local_time.tm_year + 1900);
     return oss.str();
+}
+
+void free_bass(HSTREAM stream){
+    BASS_StreamFree(stream);
+    BASS_Free();
 }
