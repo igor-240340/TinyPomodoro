@@ -8,6 +8,8 @@
 #include <filesystem>
 #include <conio.h>
 
+#include <windows.h>
+
 #include "bass.h"
 
 constexpr int default_time_minutes = 25;
@@ -15,8 +17,11 @@ constexpr int default_time_minutes = 25;
 void log_time(const std::string& foldername, int minutes_elapsed);
 std::string get_current_date_string();
 void free_bass(HSTREAM stream);
+void enable_ansi();
 
 int main(int argc, char* argv[]) {
+    enable_ansi();
+
     if (!BASS_Init(-1, 44100, 0, 0, NULL)) {
         std::cerr << "BASS: Can't initialize device.\n";
         return 1;
@@ -47,16 +52,16 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Timer started for " << minutes << " minute(s)...\n";
-    std::cout << "Press 'p' to pause the timer.\n";
-    std::cout << "Press 'e' to exit (elapsed time won't be counted).\n";
+    std::cout << "Press 'Space' to pause the timer.\n";
+    std::cout << "Press 'Esc' to exit (the elapsed time will be counted if -nolog hasn't been specified).\n";
     auto start = std::chrono::steady_clock::now();
     auto end = start + std::chrono::minutes(minutes);
     while (std::chrono::steady_clock::now() < end) {
         auto now = std::chrono::steady_clock::now();
-        auto remaining = std::chrono::duration_cast<std::chrono::seconds>(end - now);
+        auto remaining_in_seconds = std::chrono::duration_cast<std::chrono::seconds>(end - now);
 
-        int minutes_left = remaining.count() / 60;
-        int seconds_left = remaining.count() % 60;
+        int minutes_left = remaining_in_seconds.count() / 60;
+        int seconds_left = remaining_in_seconds.count() % 60;
 
         std::cout << "\rRemaining time: ";
         std::cout
@@ -66,16 +71,19 @@ int main(int argc, char* argv[]) {
 
         if (_kbhit()) {
             char ch = _getch();
-            if (ch == 'p') {
+            if (ch == ' ') {
                 std::cout << " | Timer paused. Press any key to resume...";
                 _getch();
                 std::cout << "\r" << "\033[K" << std::flush;
+
+                now = std::chrono::steady_clock::now();
+                end = now + std::chrono::seconds(remaining_in_seconds);
                 continue;
             }
-            else if (ch == 'e') {
-                BASS_StreamFree(stream);
-                BASS_Free();
-                return 0;
+            else if (ch == 0x1B) { // ESC.
+                // Сохраняем целое количество прошедших минут.
+                minutes = static_cast<int>((static_cast<double>(minutes) - remaining_in_seconds.count() / 60.0));
+                break;
             }
         }
 
@@ -142,4 +150,19 @@ std::string get_current_date_string() {
 void free_bass(HSTREAM stream){
     BASS_StreamFree(stream);
     BASS_Free();
+}
+
+void enable_ansi() {
+    HANDLE h_out = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD dw_mode = 0;
+
+    if (h_out == INVALID_HANDLE_VALUE)
+        return;
+
+    if (!GetConsoleMode(h_out, &dw_mode))
+        return;
+
+    dw_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+    SetConsoleMode(h_out, dw_mode);
 }
