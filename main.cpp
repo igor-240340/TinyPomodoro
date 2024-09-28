@@ -6,8 +6,9 @@
 #include <sstream>
 #include <string>
 #include <filesystem>
-#include <conio.h>
+#include <limits>
 
+#define NOMINMAX    // Avoid max macro collision.
 #include <windows.h>
 
 #include "bass.h"
@@ -58,10 +59,10 @@ int main(int argc, char* argv[]) {
     auto end = start + std::chrono::minutes(minutes);
     while (std::chrono::steady_clock::now() < end) {
         auto now = std::chrono::steady_clock::now();
-        auto remaining_in_seconds = std::chrono::duration_cast<std::chrono::seconds>(end - now);
+        auto remaining_seconds = std::chrono::duration_cast<std::chrono::seconds>(end - now);
 
-        int minutes_left = remaining_in_seconds.count() / 60;
-        int seconds_left = remaining_in_seconds.count() % 60;
+        int minutes_left = remaining_seconds.count() / 60;
+        int seconds_left = remaining_seconds.count() % 60;
 
         std::cout << "\rRemaining time: ";
         std::cout
@@ -69,27 +70,33 @@ int main(int argc, char* argv[]) {
             << ":" << std::setw(2) << std::setfill('0') << seconds_left
             << std::flush;
 
-        if (_kbhit()) {
-            char ch = _getch();
-            if (ch == ' ') {
-                std::cout << " | Timer paused. Press any key to resume...";
-                _getch();
-                std::cout << "\r" << "\033[K" << std::flush;
+        if (GetAsyncKeyState(VK_SPACE) & 0x0001) {
+            std::cout << " | Timer paused. Press 'Space' again to resume...";
+            // NOTE: Мы не используем _getch(), потому что он крашится в кириллической раскладке.
+            while (!(GetAsyncKeyState(VK_SPACE) & 0x0001)) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
 
-                now = std::chrono::steady_clock::now();
-                end = now + std::chrono::seconds(remaining_in_seconds);
-                continue;
-            }
-            else if (ch == 0x1B) { // ESC.
-                // Сохраняем целое количество прошедших минут.
-                minutes = static_cast<int>((static_cast<double>(minutes) - remaining_in_seconds.count() / 60.0));
-                break;
-            }
+            // Пока таймер был в паузе, пользователь мог нажать 'Esc',
+            // тогда после выхода из паузы мы автоматически выйдем из цикла.
+            // Сбрасываем состояние, чтобы этого не произошло.
+            GetAsyncKeyState(VK_ESCAPE);
+
+            std::cout << "\r" << "\033[K" << std::flush;
+
+            now = std::chrono::steady_clock::now();
+            end = now + std::chrono::seconds(remaining_seconds);
+            continue;
+        }
+        else if (GetAsyncKeyState(VK_ESCAPE) & 0x0001) {
+            // Сохраняем целое количество прошедших минут.
+            minutes = static_cast<int>((static_cast<double>(minutes) - remaining_seconds.count() / 60.0));
+            break;
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    
+
     // "TinyPomodoro.exe -nolog" or
     // "TinyPomodoro.exe -nolog -m <minutes>".
     bool nolog_passed = (argc > 1 && std::string(argv[1]) == "-nolog") ? true : false;
@@ -109,8 +116,19 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Если в цикле таймера пользователь нажмет Enter,
+    // то после выхода из цикла по 'Esc' условие ниже будет истинным
+    // и программа сразу завершится, не дав звуку проиграться.
+    // Поэтому делаем холостой вызов, чтобы сбросить состояние.
+    // 
+    // NOTE: Мы не используем std::cin.get(), потому что пока таймер в цикле, пользователь может забить буфер мусором,
+    // в т.ч. ввести '\n' несколько раз, при этом std::cin.ignore() поможет не во всех случаях.
+    GetAsyncKeyState(VK_RETURN);
+
     std::cout << "\nPress Enter to exit.\n";
-    std::cin.get();
+    while (!(GetAsyncKeyState(VK_RETURN) & 0x0001)) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 
     BASS_StreamFree(stream);
     BASS_Free();
@@ -147,7 +165,7 @@ std::string get_current_date_string() {
     return oss.str();
 }
 
-void free_bass(HSTREAM stream){
+void free_bass(HSTREAM stream) {
     BASS_StreamFree(stream);
     BASS_Free();
 }
