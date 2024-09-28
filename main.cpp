@@ -21,6 +21,8 @@ void free_bass(HSTREAM stream);
 void enable_ansi();
 
 int main(int argc, char* argv[]) {
+    HWND current_window = GetConsoleWindow();
+
     enable_ansi();
 
     if (!BASS_Init(-1, 44100, 0, 0, NULL)) {
@@ -70,28 +72,31 @@ int main(int argc, char* argv[]) {
             << ":" << std::setw(2) << std::setfill('0') << seconds_left
             << std::flush;
 
-        if (GetAsyncKeyState(VK_SPACE) & 0x0001) {
-            std::cout << " | Timer paused. Press 'Space' again to resume...";
-            // NOTE: Мы не используем _getch(), потому что он крашится в кириллической раскладке.
-            while (!(GetAsyncKeyState(VK_SPACE) & 0x0001)) {
-                std::this_thread::sleep_for(std::chrono::seconds(1));
+        // Проверяем клавиши только если консоль в фокусе.
+        if (GetForegroundWindow() == current_window) {
+            if (GetAsyncKeyState(VK_SPACE) & 0x0001) {
+                std::cout << " | Timer paused. Press 'Space' again to resume...";
+                // NOTE: Мы не используем _getch(), потому что он крашится в кириллической раскладке.
+                while (!(GetAsyncKeyState(VK_SPACE) & 0x0001) || (GetForegroundWindow() != current_window)) {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+
+                // Пока таймер был в паузе, пользователь мог нажать 'Esc',
+                // тогда после выхода из паузы мы автоматически выйдем из цикла.
+                // Сбрасываем состояние, чтобы этого не произошло.
+                GetAsyncKeyState(VK_ESCAPE);
+
+                std::cout << "\r" << "\033[K" << std::flush;
+
+                now = std::chrono::steady_clock::now();
+                end = now + std::chrono::seconds(remaining_seconds);
+                continue;
             }
-
-            // Пока таймер был в паузе, пользователь мог нажать 'Esc',
-            // тогда после выхода из паузы мы автоматически выйдем из цикла.
-            // Сбрасываем состояние, чтобы этого не произошло.
-            GetAsyncKeyState(VK_ESCAPE);
-
-            std::cout << "\r" << "\033[K" << std::flush;
-
-            now = std::chrono::steady_clock::now();
-            end = now + std::chrono::seconds(remaining_seconds);
-            continue;
-        }
-        else if (GetAsyncKeyState(VK_ESCAPE) & 0x0001) {
-            // Сохраняем целое количество прошедших минут.
-            minutes = static_cast<int>((static_cast<double>(minutes) - remaining_seconds.count() / 60.0));
-            break;
+            else if (GetAsyncKeyState(VK_ESCAPE) & 0x0001) {
+                // Сохраняем целое количество прошедших минут.
+                minutes = static_cast<int>((static_cast<double>(minutes) - remaining_seconds.count() / 60.0));
+                break;
+            }
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
