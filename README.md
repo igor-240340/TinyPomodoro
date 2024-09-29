@@ -2,6 +2,11 @@
 
 A dirt-simple console Pomodoro timer that tracks the total time spent working each day. It can also play a sound when the timer finishes using the `bass.dll` library.
 
+## Screenshots
+![](/docs/1.png)
+![](/docs/2.png)
+![](/docs/3.png)
+
 ## Features
 
 - **Simple Timer**: The default timer is set to 25 minutes.

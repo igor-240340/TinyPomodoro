@@ -153,7 +153,7 @@ void log_time(const std::string& foldername, int minutes_elapsed) {
     }
 
     std::ofstream file(filename, std::ios::trunc);
-    file << (prev_hours_elapsed + hours_elapsed) << " hour(s).\n";
+    file << "Total time: " << (prev_hours_elapsed + hours_elapsed) << " hour(s).\n";
 }
 
 std::string get_current_date_string() {
