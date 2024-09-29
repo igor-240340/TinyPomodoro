@@ -149,7 +149,9 @@ void log_time(const std::string& foldername, int minutes_elapsed) {
     double prev_hours_elapsed = 0.0;
     if (std::filesystem::exists(filename)) {
         std::ifstream file(filename);
-        file >> prev_hours_elapsed;
+
+        std::string t;
+        file >> t >> t >> prev_hours_elapsed;
     }
 
     std::ofstream file(filename, std::ios::trunc);
