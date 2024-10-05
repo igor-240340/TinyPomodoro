@@ -1,4 +1,5 @@
 # Tiny Pomodoro
+![](/48.ico)
 
 A dirt-simple console Pomodoro timer that tracks the total time spent working each day. It can also play a sound when the timer finishes using the `bass.dll` library.
 
