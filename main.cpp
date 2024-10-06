@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
     GetAsyncKeyState(VK_RETURN);
 
     std::cout << "\nPress Enter to exit.\n";
-    while (!(GetAsyncKeyState(VK_RETURN) & 0x0001)) {
+    while (!(GetAsyncKeyState(VK_RETURN) & 0x0001) || (GetForegroundWindow() != current_window)) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
