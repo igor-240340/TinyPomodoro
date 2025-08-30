@@ -11,7 +11,7 @@
 
 #include "bass.h"
 
-constexpr int default_time_minutes = 1;
+constexpr int default_time_minutes = 25;
 std::atomic<bool> timer_stopped{ false };
 
 void log_time(const std::string& foldername, int minutes_elapsed);
@@ -21,14 +21,14 @@ void input_job();
 
 int main(int argc, char* argv[]) {
 	if (!BASS_Init(-1, 44100, 0, 0, NULL)) {
-		std::cerr << "BASS_Init failed\n";
+		std::cout << "BASS_Init failed\n";
 		return 1;
 	}
 
 	std::string sound_filename = "bell-ding.mp3";
 	HSTREAM stream = BASS_StreamCreateFile(FALSE, sound_filename.c_str(), 0, 0, 0);
 	if (!stream) {
-		std::cerr << "BASS_StreamCreateFile failed" << sound_filename << std::endl;
+		std::cout << "BASS_StreamCreateFile failed" << sound_filename << std::endl;
 		BASS_Free();
 		return 1;
 	}
@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
 			minutes = std::stoi(argv[minutes_index]);
 		}
 		catch (const std::invalid_argument& e) {
-			std::cerr << "Invalid input for minutes, using default of 25.\n";
+			std::cout << "Invalid input for minutes, using default of 25.\n";
 		}
 	}
 
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (!BASS_ChannelPlay(stream, FALSE)) {
-		std::cerr << "BASS: Can't play stream.\n";
+		std::cout << "BASS: Can't play stream.\n";
 		BASS_StreamFree(stream);
 		BASS_Free();
 		return 1;
@@ -112,7 +112,7 @@ std::string get_current_date_string() {
 
 int timer_job(int minutes) {
 	std::cout << "Timer started for " << minutes << " minute(s)...\n";
-	std::cout << "Press 'q' to exit (elapsed minutes will have been counted if -nolog hasn't been specified)\n";
+	std::cout << "Press 'Esc' to exit (elapsed minutes will have been counted if -nolog hasn't been specified)\n";
 
 	auto start = std::chrono::steady_clock::now();
 	auto end = start + std::chrono::minutes(minutes);
@@ -145,7 +145,7 @@ void input_job() {
 	while (!timer_stopped) {
 		if (_kbhit()) {
 			char c = _getch();
-			if (c == 'q') {
+			if (c == 0x1b) { // Esc.
 				timer_stopped = true; // Tell timer_job that timer has been stopped by user.
 				break;
 			}
