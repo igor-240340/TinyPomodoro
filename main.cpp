@@ -73,6 +73,9 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
+	std::cout << "\nWaiting for BASS finishing playing sound...\n";
+	while (BASS_ChannelIsActive(stream) == BASS_ACTIVE_PLAYING) {}
+
 	BASS_StreamFree(stream);
 	BASS_Free();
 
