@@ -6,8 +6,15 @@
 #include <fstream>
 #include <string>
 #include <future>
+#include <format>
 
+#ifdef __linux__
+#include <termios.h>
+#endif
+
+#ifdef _WIN32
 #include <conio.h>
+#endif
 
 #include "bass.h"
 
@@ -28,7 +35,7 @@ int main(int argc, char* argv[]) {
 	std::string sound_filename = "bell-ding.mp3";
 	HSTREAM stream = BASS_StreamCreateFile(FALSE, sound_filename.c_str(), 0, 0, 0);
 	if (!stream) {
-		std::cout << "BASS_StreamCreateFile failed" << sound_filename << std::endl;
+		std::cout << "BASS_StreamCreateFile failed " << sound_filename << std::endl;
 		BASS_Free();
 		return 1;
 	}
@@ -74,7 +81,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	std::cout << "\nWaiting for BASS finishing playing sound...\n";
-	while (BASS_ChannelIsActive(stream) == BASS_ACTIVE_PLAYING) {}
+	while (BASS_ChannelIsActive(stream) == BASS_ACTIVE_PLAYING)	{}
 
 	BASS_StreamFree(stream);
 	BASS_Free();
@@ -103,19 +110,17 @@ std::string get_current_date_string() {
 	const auto now = std::chrono::system_clock::now();
 	const auto now_time_t = std::chrono::system_clock::to_time_t(now);
 
-	std::tm local_time;
-	localtime_s(&local_time, &now_time_t);
+	std::tm local_time = *std::localtime(&now_time_t);
 
-	std::ostringstream oss;
-	oss << local_time.tm_mday << '-'
-		<< (local_time.tm_mon + 1) << '-'
-		<< (local_time.tm_year + 1900);
-	return oss.str();
+	return std::format("{:02}-{:02}-{}",
+					   local_time.tm_mday,
+					   local_time.tm_mon + 1,
+					   local_time.tm_year + 1900);
 }
 
 int timer_job(int minutes) {
 	std::cout << "Timer started for " << minutes << " minute(s)...\n";
-	std::cout << "Press 'Esc' to exit (elapsed minutes will have been counted if -nolog hasn't been specified)\n";
+	std::cout << "Press 'Esc' to exit (elapsed minutes will be counted if -nolog hasn't been specified)\n";
 
 	auto start = std::chrono::steady_clock::now();
 	auto end = start + std::chrono::minutes(minutes);
@@ -144,6 +149,27 @@ int timer_job(int minutes) {
 	return minutes_elapsed;
 }
 
+#ifdef __linux__
+void input_job() {
+	termios prev_attr, new_attr;
+    tcgetattr(STDIN_FILENO, &prev_attr);
+    new_attr = prev_attr;
+    new_attr.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_attr);
+
+    while (!timer_stopped) {
+        int c = getchar();
+        if (c == 0x1b) { // Esc.
+			timer_stopped = true;
+			break;
+		}
+    }
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &prev_attr);
+}
+#endif
+
+#ifdef _WIN32
 void input_job() {
 	while (!timer_stopped) {
 		if (_kbhit()) {
@@ -155,3 +181,4 @@ void input_job() {
 		}
 	}
 }
+#endif
