@@ -21,4 +21,9 @@ if(WIN32)
     )
 elseif(UNIX)
     target_link_libraries(TinyPomodoro ${CMAKE_SOURCE_DIR}/bass/libbass.so)
+    add_custom_command(TARGET TinyPomodoro POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_SOURCE_DIR}/bell-ding.mp3
+            $<TARGET_FILE_DIR:TinyPomodoro>
+    )
 endif()
