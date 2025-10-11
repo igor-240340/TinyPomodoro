@@ -1,4 +1,7 @@
 ﻿.vs/
 x64/
 log/
+
+#CMake
 out/
+build/
