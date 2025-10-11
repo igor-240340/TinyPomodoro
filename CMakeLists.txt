@@ -25,5 +25,9 @@ elseif(UNIX)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${CMAKE_SOURCE_DIR}/bell-ding.mp3
             $<TARGET_FILE_DIR:TinyPomodoro>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_SOURCE_DIR}/bass/libbass.so
+            $<TARGET_FILE_DIR:TinyPomodoro>
     )
+    set_target_properties(TinyPomodoro PROPERTIES BUILD_RPATH "$ORIGIN")
 endif()
