@@ -80,4 +80,4 @@ TinyPomodoro.exe -m 30 -nolog
 4. Check the `log` folder to see the total work time for each day.
 
 ## Build
-It's cross-platform: it uses CMake so you can build it with Visual Studio on Windows or just with cmake on linux. Also you can just open it in Visual Studio Code both on Linux or Windows and press Build if you've installed CMake extension.
+It's cross-platform: it uses CMake so you can build it with Visual Studio on Windows or just with cmake on linux. Also you can just open it in Visual Studio Code either on Linux or Windows and press Build if you've installed CMake extension.
