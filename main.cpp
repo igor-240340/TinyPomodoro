@@ -10,6 +10,7 @@
 
 #ifdef __linux__
 #include <termios.h>
+#include <fcntl.h>
 #endif
 
 #ifdef _WIN32
@@ -152,20 +153,24 @@ int timer_job(int minutes) {
 #ifdef __linux__
 void input_job() {
 	termios prev_attr, new_attr;
-    tcgetattr(STDIN_FILENO, &prev_attr);
-    new_attr = prev_attr;
-    new_attr.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &new_attr);
+	tcgetattr(STDIN_FILENO, &prev_attr);
+	new_attr = prev_attr;
+	new_attr.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(STDIN_FILENO, TCSANOW, &new_attr);
 
-    while (!timer_stopped) {
-        int c = getchar();
-        if (c == 0x1b) { // Esc.
+	int prev_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+	fcntl(STDIN_FILENO, F_SETFL, prev_flags | O_NONBLOCK);
+
+	while (!timer_stopped) {
+		int c = getchar();
+		if (c == 0x1b) { // Esc.
 			timer_stopped = true;
 			break;
 		}
-    }
+	}
 
-    tcsetattr(STDIN_FILENO, TCSANOW, &prev_attr);
+	fcntl(STDIN_FILENO, F_SETFL, prev_flags);
+	tcsetattr(STDIN_FILENO, TCSANOW, &prev_attr);
 }
 #endif
 
