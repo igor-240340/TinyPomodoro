@@ -121,7 +121,7 @@ std::string get_current_date_string() {
 
 int timer_job(int minutes) {
 	std::cout << "Timer started for " << minutes << " minute(s)...\n";
-	std::cout << "Press 'Esc' to exit (elapsed minutes will be counted if -nolog hasn't been specified)\n";
+	std::cout << "Press 'q' to exit (elapsed minutes will be counted if -nolog hasn't been specified)\n";
 
 	auto start = std::chrono::steady_clock::now();
 	auto end = start + std::chrono::minutes(minutes);
@@ -141,8 +141,10 @@ int timer_job(int minutes) {
 			<< std::setw(2) << std::setfill('0') << minutes_left
 			<< ":" << std::setw(2) << std::setfill('0') << seconds_left
 			<< std::flush;
-		//std::cout << "\033[?25h"; // Show cursor.
+
+		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
+	std::cout << "\033[?25h" << std::flush; // Show cursor.
 
 	// Tell input_job that timer has stopped naturally.
 	timer_stopped = true;
@@ -153,24 +155,24 @@ int timer_job(int minutes) {
 #ifdef __linux__
 void input_job() {
 	termios prev_attr, new_attr;
-	tcgetattr(STDIN_FILENO, &prev_attr);
-	new_attr = prev_attr;
-	new_attr.c_lflag &= ~(ICANON | ECHO);
-	tcsetattr(STDIN_FILENO, TCSANOW, &new_attr);
+    tcgetattr(STDIN_FILENO, &prev_attr);
+    new_attr = prev_attr;
+    new_attr.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_attr);
 
-	int prev_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-	fcntl(STDIN_FILENO, F_SETFL, prev_flags | O_NONBLOCK);
+	int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
 
-	while (!timer_stopped) {
-		int c = getchar();
-		if (c == 0x1b) { // Esc.
+    while (!timer_stopped) {
+        int c = getchar();
+        if (c == 'q') {
 			timer_stopped = true;
 			break;
 		}
-	}
+    }
 
-	fcntl(STDIN_FILENO, F_SETFL, prev_flags);
-	tcsetattr(STDIN_FILENO, TCSANOW, &prev_attr);
+	fcntl(STDIN_FILENO, F_SETFL, flags);
+    tcsetattr(STDIN_FILENO, TCSANOW, &prev_attr);
 }
 #endif
 
@@ -179,7 +181,7 @@ void input_job() {
 	while (!timer_stopped) {
 		if (_kbhit()) {
 			char c = _getch();
-			if (c == 0x1b) { // Esc.
+			if (c == 'q') {
 				timer_stopped = true; // Tell timer_job that timer has been stopped by user.
 				break;
 			}
