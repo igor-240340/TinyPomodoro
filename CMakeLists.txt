@@ -7,7 +7,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(${CMAKE_SOURCE_DIR}/bass)
 
-add_executable(TinyPomodoro main.cpp)
+if (WIN32)
+    set(APP_ICON_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/TinyPomodoro.rc")
+endif()
+
+add_executable(TinyPomodoro main.cpp ${APP_ICON_RESOURCE})
 
 if(WIN32)
     target_link_libraries(TinyPomodoro ${CMAKE_SOURCE_DIR}/bass/bass.lib) 
